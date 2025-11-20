@@ -7,27 +7,47 @@ const User = require("../models/users");
 
 router.get("/", (req, res) => {
   // Cherche tous les tweets
-  Tweet.find().then((data) => {
-    if (!data) {
-      res
-        .status(404)
-        .json({ result: false, error: `Couldn't find the tweet feed` });
-    } else {
-      // création d'un array d'hashtags uniques, pour plus facilement le récupérer dans le front
-      let uniqueHashtagsArray = [];
-      data.map((t) => {
-        for (const h of t.hashtag) {
-          const isPresent = uniqueHashtagsArray.some((hash) => hash === h);
-          if (!isPresent) {
-            uniqueHashtagsArray.push(h);
+  Tweet.find()
+    .populate("author")
+    .then((data) => {
+      if (!data) {
+        res
+          .status(404)
+          .json({ result: false, error: `Couldn't find the tweet feed` });
+      } else {
+        // création d'un array d'hashtags uniques, pour plus facilement le récupérer dans le front
+        let uniqueHashtagsArray = [];
+        data.map((t) => {
+          if (!t.hashtag) {
+            return;
           }
-        }
-      });
-      //
+          for (const h of t.hashtag) {
+            const isPresent = uniqueHashtagsArray.some((hash) => hash === h);
+            if (!isPresent) {
+              uniqueHashtagsArray.push(h);
+            }
+          }
+        });
+        //
+        const fromattedData = data.map((d) => {
+          return {
+            _id: d._id,
+            author: {
+              firstname: d.author.firstname,
+              username: d.author.username,
+            },
+            message: d.message,
+            hashtag: d.hashtag,
+            date: d.date,
+            nbOfLikes: d.nbOfLikes,
+          };
+        });
 
-      res.status(200).json({ result: true, data, uniqueHashtagsArray });
-    }
-  });
+        res
+          .status(200)
+          .json({ result: true, data: fromattedData, uniqueHashtagsArray });
+      }
+    });
 });
 
 // Route post poster un tweet
