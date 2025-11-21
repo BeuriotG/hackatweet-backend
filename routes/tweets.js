@@ -1,19 +1,17 @@
-const express = require("express");
+const express = require('express');
 const router = express.Router();
-const Tweet = require("../models/tweets");
-const User = require("../models/users");
+const Tweet = require('../models/tweets');
+const User = require('../models/users');
+var moment = require('moment');
 
 // Route get pour trouver tous les tweets
-
-router.get("/", (req, res) => {
+router.get('/', (req, res) => {
   // Cherche tous les tweets
   Tweet.find()
-    .populate("author")
+    .populate('author')
     .then((data) => {
       if (!data) {
-        res
-          .status(404)
-          .json({ result: false, error: `Couldn't find the tweet feed` });
+        res.status(404).json({result: false, error: `Couldn't find the tweet feed`});
       } else {
         // création d'un array d'hashtags uniques, pour plus facilement le récupérer dans le front
         let uniqueHashtagsArray = [];
@@ -30,41 +28,37 @@ router.get("/", (req, res) => {
         });
         //
         const fromattedData = data.map((d) => {
+          const now = moment().format('DD/MM/YYYY HH:mm');
           return {
             _id: d._id,
             author: {
               firstname: d.author.firstname,
               username: d.author.username,
+              token: d.author.token,
             },
             message: d.message,
             hashtag: d.hashtag,
-            date: d.date,
+            date: now,
             nbOfLikes: d.nbOfLikes,
           };
         });
-
-        res
-          .status(200)
-          .json({ result: true, data: fromattedData, uniqueHashtagsArray });
+        res.status(200).json({result: true, data: fromattedData, uniqueHashtagsArray});
       }
     });
 });
 
 // Route post poster un tweet
-
-router.post("/", (req, res) => {
+router.post('/', (req, res) => {
   // récupère l'utilisateur pour attribuer l'id du user au tweet
-  const { message, token } = req.body;
+  const {message, token} = req.body;
   if (!message || !token) {
-    res
-      .status(406)
-      .json({ result: false, error: "One or many of the fields are missing" });
+    res.status(406).json({result: false, error: 'One or many of the fields are missing'});
   } else {
-    User.findOne({ token }).then((data) => {
+    User.findOne({token}).then((data) => {
       if (!data) {
         res.status(401).json({
           result: false,
-          error: "Unauthorized to post a tweet without a valid account",
+          error: 'Unauthorized to post a tweet without a valid account',
         });
       } else {
         // récuperation des hashtags avec une regExp
@@ -89,19 +83,17 @@ router.post("/", (req, res) => {
           } else {
             // récupération du tweet pour populate la section author et envoyer au front les informations du user
             const tweetId = data._id;
-            Tweet.findOne({ _id: tweetId })
-              .populate("author")
+            Tweet.findOne({_id: tweetId})
+              .populate('author')
               .then((data) => {
-                const { firstname, username } = data.author;
-                const { message, hashtag, date, nbOfLikes } = data;
+                const {firstname, username} = data.author;
+                const {message, hashtag, date, nbOfLikes} = data;
                 if (!data) {
-                  res
-                    .status(404)
-                    .json({ result: false, error: "tweet not synchronized" });
+                  res.status(404).json({result: false, error: 'tweet not synchronized'});
                 } else {
                   res.status(201).json({
                     result: true,
-                    message: "tweet created",
+                    message: 'tweet created',
                     tweetData: {
                       firstname,
                       username,
@@ -120,28 +112,47 @@ router.post("/", (req, res) => {
   }
 });
 
+// Route pour like un tweet
+router.post('/like', (req, res) => {
+  const {tweetId} = req.body;
+  if (!tweetId) {
+    res.status(406).json({result: false, error: 'One or many of the fields are missing'});
+  } else {
+    Tweet.findOne({_id: tweetId}).then((data) => {
+      if (!data) {
+        res.status(401).json({
+          result: false,
+          error: 'Tweet not found',
+        });
+      } else {
+        let newNbOfLikes = parseInt(data.nbOfLikes) + 1;
+        Tweet.updateOne({_id: tweetId}, {nbOfLikes: newNbOfLikes}).then((data) => {
+          res.status(200).json({result: true, data});
+        });
+      }
+    });
+  }
+});
+
 // Route pour delete un tweet
-
-router.delete("/", (req, res) => {
+router.delete('/', (req, res) => {
   // Récupération du token utilisateur et de l'id du tweet, cela servira à vérifier si le user est le propriétaire du tweet
-  const { token, tweetId } = req.body;
+  const {token, tweetId} = req.body;
 
-  Tweet.findOne({ _id: tweetId })
-    .populate("author")
+  Tweet.findOne({_id: tweetId})
+    .populate('author')
     .then((data) => {
       if (!data) {
-        res.status(404).json({ result: false, error: "Tweet not found" });
+        res.status(404).json({result: false, error: 'Tweet not found'});
       } else {
         if (data.author.token !== token) {
-          res.status(401).json({ result: false, error: "Unauthorized" });
+          res.status(401).json({result: false, error: 'Unauthorized'});
         } else {
-          Tweet.deleteOne({ _id: tweetId }).then((data) => {
+          Tweet.deleteOne({_id: tweetId}).then((data) => {
             if (data.deleteCount !== 0) {
-              res.status(200).json({ result: true, data });
+              res.status(200).json({result: true, data});
             } else {
-              res
-                .status(500)
-                .json({ result: false, error: `DB couldn't delete the tweet` });
+              res.status(500).json({result: false, error: `DB couldn't delete the tweet`});
             }
           });
         }
