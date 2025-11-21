@@ -9,6 +9,7 @@ router.get('/', (req, res) => {
   // Cherche tous les tweets
   Tweet.find()
     .populate('author')
+    .sort({date: -1})
     .then((data) => {
       if (!data) {
         res.status(404).json({result: false, error: `Couldn't find the tweet feed`});
@@ -71,7 +72,7 @@ router.post('/', (req, res) => {
           message,
           hashtag: isHashtag,
           date: newDate,
-          nbOfLikes: 0,
+          nbOfLikes: [],
         });
         // Sauvegarde du tweet
         newTweet.save().then((data) => {
@@ -100,7 +101,7 @@ router.post('/', (req, res) => {
                       message,
                       hashtag,
                       date,
-                      nbOfLikes,
+                      nbOfLikes: [],
                     },
                   });
                 }
@@ -114,8 +115,8 @@ router.post('/', (req, res) => {
 
 // Route pour like un tweet
 router.post('/like', (req, res) => {
-  const {tweetId} = req.body;
-  if (!tweetId) {
+  const {tweetId, token} = req.body;
+  if (!tweetId || !token) {
     res.status(406).json({result: false, error: 'One or many of the fields are missing'});
   } else {
     Tweet.findOne({_id: tweetId}).then((data) => {
@@ -125,10 +126,21 @@ router.post('/like', (req, res) => {
           error: 'Tweet not found',
         });
       } else {
-        let newNbOfLikes = parseInt(data.nbOfLikes) + 1;
-        Tweet.updateOne({_id: tweetId}, {nbOfLikes: newNbOfLikes}).then((data) => {
-          res.status(200).json({result: true, data});
-        });
+        const tokenLikes = data.nbOfLikes;
+        if (tokenLikes.find((e) => e === token)) {
+          // res.json({result: false, error: 'already liked'});
+
+          Tweet.updateOne({_id: tweetId}, {$pull: {nbOfLikes: token}}).then((data) => {
+            res.status(200).json({result: false});
+          });
+        } else {
+          Tweet.updateOne({_id: tweetId}, {$push: {nbOfLikes: token}}).then((data) => {
+            res.status(200).json({result: true});
+          });
+        }
+        // if(token === ) {
+        //   console.log("already exist")
+        // }
       }
     });
   }

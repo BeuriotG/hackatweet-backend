@@ -1,13 +1,13 @@
-const mongoose = require("mongoose");
+const mongoose = require('mongoose');
 
 const tweetSchema = mongoose.Schema({
-  author: { type: mongoose.Schema.Types.ObjectId, ref: "users" },
+  author: {type: mongoose.Schema.Types.ObjectId, ref: 'users'},
   message: String,
   hashtag: Array,
   date: Date,
-  nbOfLikes: Number,
+  nbOfLikes: Array,
 });
 
-const Tweet = mongoose.model("tweets", tweetSchema);
+const Tweet = mongoose.model('tweets', tweetSchema);
 
 module.exports = Tweet;
